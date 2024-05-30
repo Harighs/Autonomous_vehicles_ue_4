@@ -33,7 +33,7 @@ from .CubicSpiral import CubicSpiral
 from . import PlanningParams as params
 from .Structures import State, Maneuver, PathPoint
 from .VelocityProfileGenerator import VelocityProfileGenerator
-from . import utils 
+from . import utils
 
 # =============================================================================
 # -- Motion Planner  ----------------------------------------------------------
@@ -50,7 +50,7 @@ class MotionPlanner(object):
         self._cubic_spiral = CubicSpiral()
         self._best_spiral = []
         self._prev_step_count = 0
-    
+
     def get_goal_state_in_ego_frame(self,ego_state : State, goal_state : State):
         # Let's start by making a copy of the goal state (global reference frame)
         goal_state_ego_frame = copy.deepcopy(goal_state)
@@ -90,9 +90,9 @@ class MotionPlanner(object):
         # works.
         goal_state_ego_frame.rotation.yaw = utils.keep_angle_range_rad(
             goal_state_ego_frame.rotation.yaw, -np.pi, np.pi)
-    
+
         return goal_state_ego_frame
-    
+
     def generate_offsets_goals_ego_frame(self, ego_state : State, goal_state : State):
         # Let's transform the "main" goal (goal state) into ego reference frame
         goal_state_ego_frame = self.get_goal_state_in_ego_frame(ego_state, goal_state)
@@ -101,7 +101,7 @@ class MotionPlanner(object):
 
     def generate_offset_goals_global_frame(self, goal_state : State):
         return self.generate_offset_goals(goal_state)
-    
+
     def generate_offset_goals(self, goal_state : State):
         # Now we need to gernerate "_num_paths" goals offset from the center goal at
         # a distance "_goal_offset".
@@ -113,31 +113,31 @@ class MotionPlanner(object):
 
         # TODO-Perpendicular direction: ADD pi/2 to the goal yaw
         # (goal_state.rotation.yaw)
-        yaw = 0 # Calclate this 
+        yaw_plus_90 = goal_state.rotation.yaw + np.pi / 2 # Calclate this
 
         for i in range(self._num_paths):
             goal_offset = goal_state.copy()
             offset = (i - (int)(self._num_paths / 2)) * self._goal_offset
-            
+
             # TODO-offset goal location: calculate the x and y position of the offset
             # goals using "offset" (calculated above) and knowing that the goals should
             # lie on a perpendicular line to the direction (yaw) of the main goal. You
             # calculated this direction above (yaw_plus_90). HINT: use
             # np.cos(yaw_plus_90) and np.sin(yaw_plus_90)
 
-            goal_offset.location.x += 0 # calculates this
-            goal_offset.location.y += 0 # calculates this
-            
+            goal_offset.location.x += offset * np.cos(yaw_plus_90)  # calculates this
+            goal_offset.location.y += offset * np.sin(yaw_plus_90) # calculates this
+
             if self.valid_goal(goal_state, goal_offset):
                 goals_offset.append(goal_offset)
 
         return goals_offset
-    
+
     def valid_goal(self, main_goal : State, offset_goal : State):
         max_offset = ((self._num_paths / 2) + 1) * self._goal_offset
         dist = main_goal.location.distance(offset_goal.location)
         return dist < max_offset
-    
+
     def get_best_spiral_idx(self, spirals : List[List[PathPoint]], obstacles : List[State], goal_state : State):
         best_cost = np.inf
         collisions = []
@@ -149,18 +149,18 @@ class MotionPlanner(object):
             if cost < best_cost:
                 best_cost = cost
                 best_spiral_idx = i
-            
+
             if np.isinf(cost):
                 collisions.append(i)
-        
+
         if best_spiral_idx != -1:
             collisions.append(best_spiral_idx)
             return collisions
-        
+
         return []
-        
+
     def transform_spirals_to_global_frame(self, spirals : List[List[PathPoint]], ego_state : State):
-        
+
         transformed_spirals = []
 
         for spiral in spirals:
@@ -169,25 +169,25 @@ class MotionPlanner(object):
                 x = ego_state.location.x + \
                     path_point.x*np.cos(ego_state.rotation.yaw) - \
                     path_point.y*np.sin(ego_state.rotation.yaw)
-                
+
                 y = ego_state.location.y + \
                     path_point.x*np.sin(ego_state.rotation.yaw) + \
                     path_point.y*np.cos(ego_state.rotation.yaw)
-                
+
                 theta = path_point.theta + ego_state.rotation.yaw
 
-                new_path_point = PathPoint(x,y,0, theta, 
-                                           path_point.kappa, 
+                new_path_point = PathPoint(x,y,0, theta,
+                                           path_point.kappa,
                                            path_point.s,
                                            path_point.dkappa,
                                            path_point.ddkappa)
-                
+
                 transformed_spiral.append(new_path_point)
-            
+
             transformed_spirals.append(transformed_spiral)
-        
+
         return transformed_spirals
-    
+
     def generate_spirals(self, ego_state : State, goals : List[State]):
         # Since we are on Ego Frame, the start point is always at 0, 0, 0
 
@@ -209,14 +209,14 @@ class MotionPlanner(object):
 
             end = PathPoint(x,y,z,theta,0,s,0,0)
             if self._cubic_spiral.generate_spiral(start, end):
-                
+
                 ok, spiral = \
                     self._cubic_spiral.get_sampled_spiral(params.P_NUM_POINTS_IN_SPIRAL)
                 if ok and self.valid_spiral(spiral, goal):
                     spirals.append(spiral)
-        
+
         return spirals
-    
+
     def valid_spiral(self, spiral : List[PathPoint], offset_goal : State):
         n = len(spiral)
         delta_x = offset_goal.location.x - spiral[n-1].x

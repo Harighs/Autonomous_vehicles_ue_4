@@ -16,4 +16,4 @@ docker run \
   -e SDL_VIDEODRIVER=offscreen\
   $EXTRA_ARGS \
   carlasim/carla:0.9.10 \
-  /bin/bash  ./CarlaUE4.sh -opengl -quality-level=Low #-nosound -benchmark -fps=20 
+  /bin/bash  ./CarlaUE4.sh -opengl -quality-level=Low#-nosound -benchmark -fps=20 

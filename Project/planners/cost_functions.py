@@ -50,23 +50,22 @@ VEHICLE_SIZE = [5, 2]
 MIN_FOLLOW_DISTANCE = 1 * VEHICLE_SIZE[0]
 
 
-def diff_cost(coeff : List[float], duration : float, goals : List[float], sigma : List[float], cost_weight : float):
-    
-    #Penalizes trajectories whose coordinate(and derivatives)
-    #differ from the goal.
-    
+def diff_cost(coeff: List[float], duration: float, goals: List[float], sigma: List[float], cost_weight: float):
+    # Penalizes trajectories whose coordinate(and derivatives)
+    # differ from the goal.
+
     cost = 0
     goals = np.asarray(goals)
     evals = utils.evaluate_f_and_N_derivatives(coeff, duration, 2)
 
     diff = evals - goals[:len(evals)]
-    cost_values = 2.0/(1+np.exp(-diff/sigma[:len(evals)])) - 1
+    cost_values = 2.0 / (1 + np.exp(-diff / sigma[:len(evals)])) - 1
     cost = np.sum(cost_values)
 
     return cost * cost_weight
 
 
-def collision_circles_cost_spiral(spiral : List[PathPoint], obstacles : List[State]):
+def collision_circles_cost_spiral(spiral: List[PathPoint], obstacles: List[State]):
     collision = False
     n_circles = len(params.CIRCLE_OFFSETS)
 
@@ -81,13 +80,13 @@ def collision_circles_cost_spiral(spiral : List[PathPoint], obstacles : List[Sta
         for c in range(n_circles):
             if collision:
                 break
-            
+
             # TODO-Circle placement: Where should the circles be at? The code below
             # is NOT complete. HINT: use CIRCLE_OFFSETS[c], sine and cosine to
             # calculate x and y: cur_y + CIRCLE_OFFSETS[c] * std::sin/cos(cur_yaw)
-            
-            circle_center_x = 0 # <- Calculate this 
-            circle_center_y = 0 # <- Calculate this 
+
+            circle_center_x = cur_x + params.CIRCLE_OFFSETS[c] * np.cos(cur_yaw)  # <- Calculate this
+            circle_center_y = cur_y + params.CIRCLE_OFFSETS[c] * np.sin(cur_yaw)  # <- Calculate this
 
             for obstacle in obstacles:
                 actor_yaw = obstacle.rotation.yaw
@@ -95,30 +94,32 @@ def collision_circles_cost_spiral(spiral : List[PathPoint], obstacles : List[Sta
                 for c2 in range(n_circles):
                     if collision:
                         break
-                    actor_center_x = obstacle.location.x + params.CIRCLE_OFFSETS[c2]*np.cos(actor_yaw)
-                    actor_center_y = obstacle.location.y + params.CIRCLE_OFFSETS[c2]*np.sin(actor_yaw)
+                    actor_center_x = obstacle.location.x + params.CIRCLE_OFFSETS[c2] * np.cos(actor_yaw)
+                    actor_center_y = obstacle.location.y + params.CIRCLE_OFFSETS[c2] * np.sin(actor_yaw)
 
                     # TODO-Distance from circles to obstacles/actor: How do you calculate
                     # the distance between the center of each circle and the
                     # obstacle/actor
 
-                    dist = 0 # Calculate this
+                    dist = np.sqrt((circle_center_x - actor_center_x) ** 2 + (circle_center_y - actor_center_y) ** 2)  # Calculate this
 
                     # TODO-Collision checking: Remember that you can get the circle radius
-                    # of the car with params.CIRCLE_RADII[c] and the current circle of radius 
+                    # of the car with params.CIRCLE_RADII[c] and the current circle of radius
                     # of the the obstacle with params.CIRCLE_RADII[c2]. Remember,
                     # which is the condition for it to be a collision.
-            
-                    collision = False # Calculate this   
+                    if dist <= params.CIRCLE_RADII[c] + params.CIRCLE_RADII[c2]:
+                        collision = True
+                        break
 
     result = 0
-    
+
     if collision:
         result = np.inf
 
     return result
-    
-def close_to_main_goal_cost_spiral(spiral : List[PathPoint], main_goal : State):
+
+
+def close_to_main_goal_cost_spiral(spiral: List[PathPoint], main_goal: State):
     # The last point on the spiral should be used to check how close we are to
     # the Main (center) goal. That way, spirals that end closer to the lane
     # center-line, and that are collision free, will be prefered.
@@ -130,11 +131,11 @@ def close_to_main_goal_cost_spiral(spiral : List[PathPoint], main_goal : State):
     # 1].y and spiral[n - 1].z.
     # Use main_goal.location.x, main_goal.location.y and main_goal.location.z
     # Ex: main_goal.location.x - spiral[n - 1].x
-    delta_x = 0 # Calculate this 
-    delta_y = 0 # Calculate this 
-    delta_z = 0 # Calculate this 
+    delta_x = main_goal.location.x - spiral[n - 1].x  # Calculate this
+    delta_y = main_goal.location.y - spiral[n - 1].y  # Calculate this
+    delta_z =  main_goal.location.z - spiral[n - 1].z   # Calculate this
 
-    dist = 0 # Use the deltas to calculate the distance
+    dist = np.sqrt(delta_x ** 2 + delta_y ** 2 + delta_z ** 2)  # Use the deltas to calculate the distance
 
-    cost = 2.0/ (1+np.exp(-dist)) - 1
+    cost = 2.0 / (1 + np.exp(-dist)) - 1
     return cost
